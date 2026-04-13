@@ -285,7 +285,7 @@ const OfficerTacticalView: React.FC = () => {
                         { label: 'KM', val: stats.distance, icon: Navigation, color: 'text-purple-400' }
                     ].map((s, i) => (
                         <div key={i} className="bg-[#121b2b] p-3 rounded-xl border border-blue-900/20 shadow-xl relative overflow-hidden">
-                            {(isShiftActive || activePatrol) && i === 0 && <span className="absolute right-2 top-2 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />}
+                            {activePatrol && i === 0 && <span className="absolute right-2 top-2 w-1.5 h-1.5 bg-emerald-500 rounded-full animate-ping" />}
                             <s.icon className={`w-4 h-4 mb-1 ${s.color}`} />
                             <p className="text-[10px] text-gray-500 font-bold uppercase">{s.label}</p>
                             <p className="text-xl font-black">{s.val}</p>
