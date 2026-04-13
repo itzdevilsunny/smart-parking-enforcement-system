@@ -254,78 +254,82 @@ function App() {
         return <LoginPage onLogin={handleLoginSuccess} />;
     }
 
-    // Render Full Screen Citizen View ONLY for Citizen Role
-    if (view === 'citizen' && userRole === 'user') {
-        return <CitizenApp zones={zones} user={user} history={MOCK_USER_HISTORY} />;
-    }
+    // Render UI
+    const renderContent = () => {
+        if (view === 'citizen' && userRole === 'user') {
+            return <CitizenApp zones={zones} user={user} history={MOCK_USER_HISTORY} />;
+        }
+
+        return (
+            <div className="flex h-screen bg-tactical-bg text-gray-100 overflow-hidden font-inter">
+                <Sidebar currentView={view} setView={handleViewChange} onLogout={handleLogout} />
+
+                <main className="flex-1 flex flex-col min-w-0">
+                    <Header
+                        kpis={kpis}
+                        onBack={goBack}
+                        onForward={goForward}
+                        canBack={currentIndex > 0}
+                        canForward={currentIndex < history.length - 1}
+                    >
+                        {userRole !== 'user' && view === 'dashboard' && (
+                            <button
+                                onClick={() => handleViewChange('wizard')}
+                                className="ml-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2"
+                            >
+                                <span>+ Create Zone</span>
+                            </button>
+                        )}
+                    </Header>
+
+                    <div className="flex-1 overflow-auto p-6 scrollbar-thin">
+                        {view === 'dashboard' && kpis && (
+                            <Dashboard
+                                kpis={kpis}
+                                zones={zones}
+                                violations={violations}
+                                onBack={goBack}
+                                onNext={goForward}
+                            />
+                        )}
+                        {view === 'wizard' && (
+                            <ZoneWizard
+                                onCancel={() => goBack()}
+                                onComplete={handleZoneCreated}
+                            />
+                        )}
+                        {view === 'map' && <CityMap zones={zones} />}
+                        {view === 'ledger' && <AuditLedger />}
+                        {view === 'citizen' && (
+                            <div className="h-full border border-tactical-border rounded-xl overflow-hidden shadow-2xl relative">
+                                <CitizenApp zones={zones} user={user || { id: 'admin-sim', username: 'Admin Simulator', email: 'admin@mcd.gov.in', role: 'admin' }} history={MOCK_USER_HISTORY} />
+                            </div>
+                        )}
+                        {view === 'violations' && (
+                            <Enforcement
+                                violations={violations}
+                                zones={zones}
+                                onDispatch={handleEnforcementDispatch}
+                            />
+                        )}
+                        {view === 'response' && (
+                            <ResponseTeam violations={violations} zones={zones} />
+                        )}
+                    </div>
+                </main>
+            </div>
+        );
+    };
 
     return (
-        <div className="flex h-screen bg-tactical-bg text-gray-100 overflow-hidden font-inter">
-            <Sidebar currentView={view} setView={handleViewChange} onLogout={handleLogout} />
-
-            <main className="flex-1 flex flex-col min-w-0">
-                <Header
-                    kpis={kpis}
-                    onBack={goBack}
-                    onForward={goForward}
-                    canBack={currentIndex > 0}
-                    canForward={currentIndex < history.length - 1}
-                >
-                    {/* Inject Create Zone Button for Admin */}
-                    {userRole !== 'user' && view === 'dashboard' && (
-                        <button
-                            onClick={() => handleViewChange('wizard')}
-                            className="ml-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition-all flex items-center gap-2"
-                        >
-                            <span>+ Create Zone</span>
-                        </button>
-                    )}
-                </Header>
-
-                <div className="flex-1 overflow-auto p-6 scrollbar-thin">
-                    {view === 'dashboard' && kpis && (
-                        <Dashboard
-                            kpis={kpis}
-                            zones={zones}
-                            violations={violations}
-                            onBack={goBack}
-                            onNext={goForward} // Or handleViewChange('map') if defining a flow
-                        />
-                    )}
-                    {view === 'wizard' && (
-                        <ZoneWizard
-                            onCancel={() => goBack()}
-                            onComplete={handleZoneCreated}
-                        />
-                    )}
-                    {view === 'map' && <CityMap zones={zones} />}
-                    {view === 'ledger' && <AuditLedger />}
-                    {view === 'citizen' && (
-                        <div className="h-full border border-tactical-border rounded-xl overflow-hidden shadow-2xl relative">
-                            {/* Render Citizen App in a 'Simulator' frame for Admins */}
-                            <CitizenApp zones={zones} user={user || { id: 'admin-sim', username: 'Admin Simulator', email: 'admin@mcd.gov.in', role: 'admin' }} history={MOCK_USER_HISTORY} />
-                        </div>
-                    )}
-                    {view === 'violations' && (
-                        <Enforcement
-                            violations={violations}
-                            zones={zones}
-                            onDispatch={handleEnforcementDispatch} // Ensure this handler exists in App.tsx or use a placeholder
-                        />
-                    )}
-                    {view === 'response' && (
-                        <ResponseTeam violations={violations} zones={zones} />
-                    )}
-                </div>
-
-                {/* Voice Assistant Overlay - Connected to System State */}
-                <VoiceAssistant 
-                    onCommand={handleVoiceAction} 
-                    kpis={kpis} 
-                    zones={zones} 
-                />
-            </main>
-        </div>
+        <>
+            {renderContent()}
+            <VoiceAssistant
+                onCommand={handleVoiceAction}
+                kpis={kpis}
+                zones={zones}
+            />
+        </>
     );
 }
 
