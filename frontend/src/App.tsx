@@ -243,6 +243,10 @@ function App() {
             case 'NAVIGATE_NEAREST':
                 handleViewChange('map'); // Switch to map and focus nearest
                 break;
+            case 'PROCESS_PAYMENT':
+                console.log('Voice Payment Verified');
+                handleViewChange('citizen');
+                break;
             case 'REFRESH':
                 setIsAuthenticated(false);
                 setTimeout(() => setIsAuthenticated(true), 100);
