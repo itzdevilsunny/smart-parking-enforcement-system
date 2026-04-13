@@ -136,6 +136,36 @@ setInterval(() => {
     }
 }, 3000); // Updates every 3 seconds
 
+// AI Voice Command Interpretation
+import OpenAI from 'openai';
+
+app.post('/api/voice/process', async (req, res) => {
+    const { text } = req.body;
+    const apiKey = process.env.VOICE_API_KEY;
+
+    if (!apiKey) {
+        return res.status(500).json({ error: 'AI Key not configured' });
+    }
+
+    try {
+        const openai = new OpenAI({ apiKey });
+        const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
+                { role: "system", content: "You are the brain of a Smart Parking app. The user will speak a command in English or Hindi. Map it to one of these: SHOW_MAP, GET_STATUS, SHOW_LEDGER, SHOW_CITIZEN, PROCESS_PAYMENT, SHOW_RESPONSE, SHOW_WIZARD, REPORT_VIOLATION, LOGOUT. Return ONLY JSON: { \"command\": \"STRING\", \"feedback\": \"A short confirmation message in the user's language\" }" },
+                { role: "user", content: text }
+            ],
+            response_format: { type: "json_object" }
+        });
+
+        const response = JSON.parse(completion.choices[0].message.content || '{}');
+        res.json(response);
+    } catch (error) {
+        console.error('AI Brain Error:', error);
+        res.status(500).json({ error: 'AI Brain error' });
+    }
+});
+
 httpServer.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Live Parking Simulator Active (Mock Data Mode)`);
