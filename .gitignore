@@ -1,0 +1,19 @@
+# Node
+node_modules/
+dist/
+.env
+
+# Frontend specific
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Backend specific
+backend/node_modules/
+backend/dist/
+backend/.env
+
+# OS
+.DS_Store
+Thumbs.db
