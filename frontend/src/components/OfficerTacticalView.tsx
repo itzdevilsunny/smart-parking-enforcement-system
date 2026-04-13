@@ -280,44 +280,6 @@ const OfficerTacticalView: React.FC = () => {
         <div className="flex-1 overflow-auto p-4 space-y-4">
             {/* Stats Grid */}
             <div className="grid grid-cols-3 gap-3">
-                <div className="flex items-center gap-4">
-                    <div className="text-right">
-                        <p className="text-[10px] text-gray-500 font-bold uppercase">Badge #77</p>
-                        <p className="text-xs text-emerald-400 font-black">ONLINE</p>
-                    </div>
-                    <div className="relative">
-                        <button onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }}>
-                            <Bell className={`w-6 h-6 transition-colors ${unreadCount > 0 ? 'text-amber-500' : 'text-gray-400'}`} />
-                        </button>
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border border-[#0d1420] animate-pulse"></span>
-                        )}
-                        
-                        {/* Dropdown Notifs */}
-                        {showNotifications && (
-                            <div className="absolute top-10 right-0 w-64 bg-[#121b2b] border border-blue-900/30 rounded-xl shadow-2xl overflow-hidden z-50">
-                                <div className="p-3 bg-[#0d1420] border-b border-blue-900/30 font-bold text-xs uppercase flex justify-between">
-                                    <span>Comms</span>
-                                    <button onClick={() => setShowNotifications(false)}><X className="w-4 h-4 text-gray-400" /></button>
-                                </div>
-                                <div className="max-h-48 overflow-y-auto">
-                                    {notifications.length === 0 ? (
-                                        <p className="p-4 text-xs text-center text-gray-500 font-medium">No new comms</p>
-                                    ) : (
-                                        notifications.map(n => (
-                                            <div key={n.id} className="p-3 border-b border-gray-800/50 hover:bg-gray-800/20">
-                                                <p className="text-rose-400 text-[10px] uppercase font-bold">{n.title}</p>
-                                                <p className="text-xs text-gray-300">{n.msg}</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </header>
-
                 {[
                     { label: 'Shift (h)', val: stats.shifts, icon: Activity, color: 'text-emerald-400' },
 
