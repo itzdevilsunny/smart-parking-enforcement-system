@@ -225,6 +225,9 @@ function App() {
             case 'SHOW_MAP':
                 handleViewChange('map');
                 break;
+            case 'SHOW_LEDGER':
+                handleViewChange('ledger');
+                break;
         }
     };
 

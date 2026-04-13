@@ -60,20 +60,48 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand }) => {
     }, [recognition]);
 
     const processCommand = (text: string) => {
-        console.log('Processing Command:', text);
+        console.log('Voice Analysis:', text);
         
-        // Logical Command Mapping
-        if (text.includes('report') || text.includes('violation')) {
-            const plate = text.split('plate').pop()?.trim() || 'Unknown';
-            onCommand?.('REPORT_VIOLATION', plate);
-            speak(`Reporting violation for plate ${plate}`);
-        } else if (text.includes('status') || text.includes('zones')) {
+        // 1. Dashboard / Status Commands
+        if (text.includes('status') || text.includes('dashboard') || text.includes('home') || text.includes('summary')) {
+            const msg = 'Opening dashboard status';
+            speak(msg);
             onCommand?.('GET_STATUS', '');
-            speak('Fetching current system status');
-        } else if (text.includes('map') || text.includes('show')) {
-            onCommand?.('SHOW_MAP', '');
-            speak('Displaying parking map');
+            return;
         }
+
+        // 2. Map / Location Commands
+        if (text.includes('map') || text.includes('location') || text.includes('show') || text.includes('where')) {
+            const msg = 'Displaying live parking map';
+            speak(msg);
+            onCommand?.('SHOW_MAP', '');
+            return;
+        }
+
+        // 3. Violation / Enforcement Commands
+        if (text.includes('report') || text.includes('violation') || text.includes('enforce') || text.includes('plate') || text.includes('check')) {
+            // Try to extract a plate number if mentioned
+            const plateMatch = text.match(/[a-z0-9]{3,}/g);
+            const plate = plateMatch ? plateMatch[plateMatch.length - 1].toUpperCase() : '';
+            
+            const msg = plate 
+                ? `Checking violation record for plate ${plate}` 
+                : 'Opening enforcement view';
+            
+            speak(msg);
+            onCommand?.('REPORT_VIOLATION', plate);
+            return;
+        }
+
+        // 4. Ledger / Audit Commands
+        if (text.includes('ledger') || text.includes('history') || text.includes('audit') || text.includes('logs')) {
+            speak('Opening audit logs');
+            onCommand?.('SHOW_LEDGER', '');
+            return;
+        }
+
+        // Fallback for unrecognized commands
+        speak("I heard you, but I don't have a command for that yet.");
     };
 
     const speak = (message: string) => {
