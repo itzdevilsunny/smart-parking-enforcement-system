@@ -102,7 +102,7 @@ const OfficerTacticalView: React.FC = () => {
     // -------- OBSTRUCTION LOGIC --------
     const submitObstruction = () => {
         setObstructionSending(true);
-        navigator.geolocation.getCurrentPosition((pos) => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
             const incident = {
                 id: `INC-${Date.now()}`,
                 type: 'Obstruction',
@@ -112,7 +112,19 @@ const OfficerTacticalView: React.FC = () => {
                 timestamp: new Date().toISOString(),
                 status: 'active'
             };
-            socket?.emit('report_incident', incident);
+            
+            try {
+                const REQ_URL = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+                await fetch(`${REQ_URL}/api/incidents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(incident)
+                });
+            } catch (err) {
+                console.error('Failed to post incident via API, falling back to socket', err);
+                socket?.emit('report_incident', incident);
+            }
+
             setTimeout(() => {
                 setObstructionSending(false);
                 setShowObstructionModal(false);
@@ -151,7 +163,7 @@ const OfficerTacticalView: React.FC = () => {
     const triggerEmergency = () => {
         setDispatchNotified(true);
         // Fire high priority request
-        navigator.geolocation.getCurrentPosition((pos) => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
             const emergency = {
                 id: `EMG-${Date.now()}`,
                 type: 'Emergency',
@@ -160,7 +172,18 @@ const OfficerTacticalView: React.FC = () => {
                 location: { lat: pos.coords.latitude, lng: pos.coords.longitude },
                 timestamp: new Date().toISOString()
             };
-            socket?.emit('report_incident', emergency);
+            
+            try {
+                const REQ_URL = import.meta.env.VITE_API_BASE || 'http://localhost:3000';
+                await fetch(`${REQ_URL}/api/incidents`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(emergency)
+                });
+            } catch (err) {
+                console.error("Emergency POST failed, escalating via sockets", err);
+                socket?.emit('report_incident', emergency);
+            }
             
             // Notification UI
             setLastIncident('🚨 EMERGENCY DISPATCH NOTIFIED 🚨');

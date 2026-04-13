@@ -71,6 +71,22 @@ app.patch('/api/deployments/:id', (req, res) => {
     }
 });
 
+// Formal Incident Reporting API
+app.post('/api/incidents', (req, res) => {
+    const incident = {
+        ...req.body,
+        id: req.body.id || `INC-${Date.now()}`,
+        server_time: new Date().toISOString()
+    };
+    
+    // Relay to connected admins in real-time
+    console.log(`🚨 HTTP POST ALERT RECEIVED: ${incident.type} from ${incident.officer_id}`);
+    io.emit('new_incident', incident);
+    
+    // Return HTTP confirmation
+    res.status(201).json({ success: true, incident });
+});
+
 // WebSocket logic
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
