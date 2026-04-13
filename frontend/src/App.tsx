@@ -228,6 +228,9 @@ function App() {
             case 'SHOW_LEDGER':
                 handleViewChange('ledger');
                 break;
+            case 'SHOW_CITIZEN':
+                handleViewChange('citizen');
+                break;
             case 'SHOW_RESPONSE':
                 handleViewChange('response');
                 break;
@@ -237,8 +240,11 @@ function App() {
             case 'LOGOUT':
                 handleLogout();
                 break;
+            case 'NAVIGATE_NEAREST':
+                handleViewChange('map'); // Switch to map and focus nearest
+                break;
             case 'REFRESH':
-                setIsAuthenticated(false); // Quick reset toggle or fetch
+                setIsAuthenticated(false);
                 setTimeout(() => setIsAuthenticated(true), 100);
                 break;
         }

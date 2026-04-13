@@ -37,97 +37,35 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
         setIsListening(false);
     }, [recognition]);
 
-    useEffect(() => {
-        if (!recognition) return;
+    // Helpers
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+    };
 
-        recognition.onresult = (event: any) => {
-            const transcript = event.results[0][0].transcript.toLowerCase();
-            setLastTranscript(transcript);
-            processCommand(transcript);
-        };
-
-        recognition.onend = () => setIsListening(false);
-    }, [recognition]);
-
-    const processCommand = (text: string) => {
-        console.log('Voice Command:', text);
-
-        // DATA QUERY COMMANDS (Reading from live state)
-        if (text.includes('revenue') || text.includes('earn') || text.includes('money')) {
-            const amount = kpis?.revenue_today || 0;
-            speak(`Today's total revenue is ${amount} rupees.`);
+    const findNearestParking = () => {
+        if (!navigator.geolocation || !zones || zones.length === 0) {
+            speak("I need GPS access to find the nearest parking. Please check your permissions.");
             return;
         }
 
-        if (text.includes('much occupancy') || text.includes('busy')) {
-            const occ = kpis?.avg_occupancy || 0;
-            speak(`Current occupancy across all zones is ${occ} percent.`);
-            return;
-        }
+        navigator.geolocation.getCurrentPosition((position) => {
+            const { latitude, longitude } = position.coords;
+            let nearestZone: ParkingZone | null = null;
+            let minDistance = Infinity;
 
-        if (text.includes('health') || text.includes('online')) {
-            const status = kpis?.system_health || 'unknown';
-            speak(`System health is currently ${status}. All modules are operational.`);
-            return;
-        }
+            zones.forEach(zone => {
+                const dist = calculateDistance(latitude, longitude, zone.location_lat, zone.location_lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearestZone = zone;
+                }
+            });
 
-        if (text.includes('many violations') || text.includes('breaches')) {
-            const count = kpis?.active_breaches || 0;
-            speak(`There are currently ${count} active parking violations requiring attention.`);
-            return;
-        }
-
-        // NAVIGATION COMMANDS
-        if (text.includes('dashboard') || text.includes('home') || text.includes('summary')) {
-            speak('Navigating to dashboard.');
-            onCommand?.('GET_STATUS', '');
-            return;
-        }
-
-        if (text.includes('map') || text.includes('show location') || text.includes('where is')) {
-            speak('Opening live parking map.');
-            onCommand?.('SHOW_MAP', '');
-            return;
-        }
-
-        if (text.includes('response') || text.includes('dispatch') || text.includes('team')) {
-            speak('Opening response team dispatch.');
-            onCommand?.('SHOW_RESPONSE', '');
-            return;
-        }
-
-        if (text.includes('wizard') || text.includes('create zone') || text.includes('add zone')) {
-            speak('Opening zone creation wizard.');
-            onCommand?.('SHOW_WIZARD', '');
-            return;
-        }
-
-        if (text.includes('enforce') || text.includes('report') || text.includes('violation')) {
-            speak('Opening enforcement overview.');
-            onCommand?.('REPORT_VIOLATION', '');
-            return;
-        }
-
-        if (text.includes('ledger') || text.includes('audit') || text.includes('history')) {
-            speak('Opening audit ledger logs.');
-            onCommand?.('SHOW_LEDGER', '');
-            return;
-        }
-
-        if (text.includes('logout') || text.includes('sign out')) {
-            speak('Logging you out of the system. Drive safely.');
-            onCommand?.('LOGOUT', '');
-            return;
-        }
-
-        if (text.includes('refresh') || text.includes('update')) {
-            speak('Refreshing live data.');
-            onCommand?.('REFRESH', '');
-            return;
-        }
-
-        // Catch-all
-        speak("I heard your request, but that feature is not yet mapped to a voice command.");
+            if (nearestZone) {
+                speak(`The nearest parking area is ${(nearestZone as any).name}. It is now highlighted on your map.`);
+                onCommand?.('NAVIGATE_NEAREST', (nearestZone as any).id);
+            }
+        });
     };
 
     const speak = (message: string) => {
@@ -135,24 +73,109 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
         window.speechSynthesis.speak(utterance);
     };
 
+    useEffect(() => {
+        if (!recognition) return;
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript.toLowerCase();
+            setLastTranscript(transcript);
+            processCommand(transcript);
+        };
+        recognition.onend = () => setIsListening(false);
+    }, [recognition, zones]);
+
+    const processCommand = (text: string) => {
+        console.log('Voice Assist:', text);
+
+        // NAVIGATION & GPS
+        if (text.includes('nearest') || text.includes('nearest parking') || text.includes('where can i park') || text.includes('directions')) {
+            speak('Calculating your GPS position to find the nearest zone.');
+            findNearestParking();
+            return;
+        }
+
+        // PORTAL COMMANDS
+        if (text.includes('citizen app') || text.includes('citizen portal') || text.includes('open portal')) {
+            speak('Opening the citizen parking portal.');
+            onCommand?.('SHOW_CITIZEN', '');
+            return;
+        }
+
+        if (text.includes('challan') || text.includes('fine') || text.includes('penalty') || text.includes('receipt')) {
+            speak('Opening challan and violation history.');
+            onCommand?.('SHOW_LEDGER', '');
+            return;
+        }
+
+        if (text.includes('dispatch') || text.includes('send team') || text.includes('response')) {
+            speak('Opening response team management.');
+            onCommand?.('SHOW_RESPONSE', '');
+            return;
+        }
+
+        // SYSTEM DATA
+        if (text.includes('revenue') || text.includes('money') || text.includes('collection')) {
+            speak(`Total collection today is ${kpis?.revenue_today || 0} rupees.`);
+            return;
+        }
+
+        if (text.includes('active violations') || text.includes('violations')) {
+            speak(`There are ${kpis?.active_breaches || 0} active violations right now.`);
+            onCommand?.('REPORT_VIOLATION', '');
+            return;
+        }
+
+        // GENERAL NAV
+        if (text.includes('map')) {
+            speak('Opening city map view.');
+            onCommand?.('SHOW_MAP', '');
+            return;
+        }
+
+        if (text.includes('home') || text.includes('dashboard')) {
+            speak('Returning to main dashboard.');
+            onCommand?.('GET_STATUS', '');
+            return;
+        }
+
+        if (text.includes('wizard') || text.includes('add zone') || text.includes('create')) {
+            speak('Opening zone creator wizard.');
+            onCommand?.('SHOW_WIZARD', '');
+            return;
+        }
+
+        if (text.includes('logout')) {
+            speak('Securely logging out. Drive safe.');
+            onCommand?.('LOGOUT', '');
+            return;
+        }
+
+        // HELP
+        if (text.includes('help') || text.includes('what can you do')) {
+            speak('I can find the nearest parking, check revenue, open challan history, or navigate the dashboard for you. Just ask.');
+            return;
+        }
+
+        speak("Command not recognized. Say help for a list of things I can do.");
+    };
+
     if (!recognition) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 group">
             <div className="flex flex-col items-end space-y-3">
                 {lastTranscript && (
-                    <div className="bg-white/90 backdrop-blur-md border border-indigo-100 px-4 py-2 rounded-2xl shadow-xl max-w-xs transition-opacity duration-300">
-                        <p className="text-sm font-medium text-indigo-600 italic">"{lastTranscript}"</p>
+                    <div className="bg-white px-4 py-2 rounded-2xl shadow-xl transition-all duration-300 transform scale-100 origin-bottom-right">
+                        <p className="text-sm font-semibold text-indigo-600">"{lastTranscript}"</p>
                     </div>
                 )}
-                
                 <button
                     onClick={isListening ? stopListening : startListening}
-                    className={`p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 ${
-                        isListening ? 'bg-rose-500 animate-pulse' : 'bg-indigo-600'
+                    className={`p-5 rounded-full shadow-2xl transition-all duration-300 transform hover:rotate-12 ${
+                        isListening ? 'bg-rose-600 animate-pulse scale-110' : 'bg-indigo-700'
                     } text-white`}
+                    title="Voice Assistant (Hands-Free)"
                 >
-                    {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                    {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
                 </button>
             </div>
         </div>
