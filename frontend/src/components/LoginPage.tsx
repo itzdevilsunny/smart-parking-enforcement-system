@@ -41,10 +41,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         } catch (err: any) {
             console.error('Login failed:', err);
             // Fallback for demo if backend is offline/mock
-            if (email === 'admin' && password === 'admin') {
-                onLogin({ id: 'mock-1', username: 'admin', email: 'admin@mcd.gov.in', role: 'admin', department: 'IT' }, role);
+            if ((email === 'admin' && password === 'admin') || (email === 'officer' && password === 'officer') || (email === 'contractor' && password === 'contractor')) {
+                onLogin({ id: `mock-${role}`, username: role, email: `${role}@mcd.gov.in`, role: role, department: 'Operations' }, role);
             } else {
-                setError('Invalid credentials or server offline. Try admin/admin for demo.');
+                setError(`Invalid credentials or server offline. Try ${role}/${role} for demo.`);
             }
         } finally {
             if (role !== 'user') setLoading(false);
