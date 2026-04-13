@@ -228,6 +228,19 @@ function App() {
             case 'SHOW_LEDGER':
                 handleViewChange('ledger');
                 break;
+            case 'SHOW_RESPONSE':
+                handleViewChange('response');
+                break;
+            case 'SHOW_WIZARD':
+                handleViewChange('wizard');
+                break;
+            case 'LOGOUT':
+                handleLogout();
+                break;
+            case 'REFRESH':
+                setIsAuthenticated(false); // Quick reset toggle or fetch
+                setTimeout(() => setIsAuthenticated(true), 100);
+                break;
         }
     };
 
@@ -299,8 +312,12 @@ function App() {
                     )}
                 </div>
 
-                {/* Voice Assistant Overlay */}
-                <VoiceAssistant onCommand={handleVoiceAction} />
+                {/* Voice Assistant Overlay - Connected to System State */}
+                <VoiceAssistant 
+                    onCommand={handleVoiceAction} 
+                    kpis={kpis} 
+                    zones={zones} 
+                />
             </main>
         </div>
     );

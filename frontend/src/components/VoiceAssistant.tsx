@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Mic, MicOff, Volume2, ShieldAlert } from 'lucide-react';
+import { Mic, MicOff } from 'lucide-react';
+import type { DashboardKPIs, ParkingZone } from '../types';
 
 interface VoiceAssistantProps {
     onCommand?: (command: string, details: string) => void;
+    kpis?: DashboardKPIs;
+    zones?: ParkingZone[];
 }
 
-const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand }) => {
+const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones }) => {
     const [isListening, setIsListening] = useState(false);
     const [lastTranscript, setLastTranscript] = useState('');
-    const [status, setStatus] = useState<'idle' | 'listening' | 'processing'>('idle');
 
-    // Initialize Speech Recognition
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = SpeechRecognition ? new SpeechRecognition() : null;
 
@@ -25,7 +26,6 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand }) => {
         try {
             recognition.start();
             setIsListening(true);
-            setStatus('listening');
         } catch (err) {
             console.error('Speech recognition error:', err);
         }
@@ -35,7 +35,6 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand }) => {
         if (!recognition) return;
         recognition.stop();
         setIsListening(false);
-        setStatus('idle');
     }, [recognition]);
 
     useEffect(() => {
@@ -47,103 +46,115 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand }) => {
             processCommand(transcript);
         };
 
-        recognition.onend = () => {
-            setIsListening(false);
-            setStatus('idle');
-        };
-
-        recognition.onerror = (event: any) => {
-            console.error('Recognition Error:', event.error);
-            setIsListening(false);
-            setStatus('idle');
-        };
+        recognition.onend = () => setIsListening(false);
     }, [recognition]);
 
     const processCommand = (text: string) => {
-        console.log('Voice Analysis:', text);
-        
-        // 1. Dashboard / Status Commands
-        if (text.includes('status') || text.includes('dashboard') || text.includes('home') || text.includes('summary')) {
-            const msg = 'Opening dashboard status';
-            speak(msg);
+        console.log('Voice Command:', text);
+
+        // DATA QUERY COMMANDS (Reading from live state)
+        if (text.includes('revenue') || text.includes('earn') || text.includes('money')) {
+            const amount = kpis?.revenue_today || 0;
+            speak(`Today's total revenue is ${amount} rupees.`);
+            return;
+        }
+
+        if (text.includes('much occupancy') || text.includes('busy')) {
+            const occ = kpis?.avg_occupancy || 0;
+            speak(`Current occupancy across all zones is ${occ} percent.`);
+            return;
+        }
+
+        if (text.includes('health') || text.includes('online')) {
+            const status = kpis?.system_health || 'unknown';
+            speak(`System health is currently ${status}. All modules are operational.`);
+            return;
+        }
+
+        if (text.includes('many violations') || text.includes('breaches')) {
+            const count = kpis?.active_breaches || 0;
+            speak(`There are currently ${count} active parking violations requiring attention.`);
+            return;
+        }
+
+        // NAVIGATION COMMANDS
+        if (text.includes('dashboard') || text.includes('home') || text.includes('summary')) {
+            speak('Navigating to dashboard.');
             onCommand?.('GET_STATUS', '');
             return;
         }
 
-        // 2. Map / Location Commands
-        if (text.includes('map') || text.includes('location') || text.includes('show') || text.includes('where')) {
-            const msg = 'Displaying live parking map';
-            speak(msg);
+        if (text.includes('map') || text.includes('show location') || text.includes('where is')) {
+            speak('Opening live parking map.');
             onCommand?.('SHOW_MAP', '');
             return;
         }
 
-        // 3. Violation / Enforcement Commands
-        if (text.includes('report') || text.includes('violation') || text.includes('enforce') || text.includes('plate') || text.includes('check')) {
-            // Try to extract a plate number if mentioned
-            const plateMatch = text.match(/[a-z0-9]{3,}/g);
-            const plate = plateMatch ? plateMatch[plateMatch.length - 1].toUpperCase() : '';
-            
-            const msg = plate 
-                ? `Checking violation record for plate ${plate}` 
-                : 'Opening enforcement view';
-            
-            speak(msg);
-            onCommand?.('REPORT_VIOLATION', plate);
+        if (text.includes('response') || text.includes('dispatch') || text.includes('team')) {
+            speak('Opening response team dispatch.');
+            onCommand?.('SHOW_RESPONSE', '');
             return;
         }
 
-        // 4. Ledger / Audit Commands
-        if (text.includes('ledger') || text.includes('history') || text.includes('audit') || text.includes('logs')) {
-            speak('Opening audit logs');
+        if (text.includes('wizard') || text.includes('create zone') || text.includes('add zone')) {
+            speak('Opening zone creation wizard.');
+            onCommand?.('SHOW_WIZARD', '');
+            return;
+        }
+
+        if (text.includes('enforce') || text.includes('report') || text.includes('violation')) {
+            speak('Opening enforcement overview.');
+            onCommand?.('REPORT_VIOLATION', '');
+            return;
+        }
+
+        if (text.includes('ledger') || text.includes('audit') || text.includes('history')) {
+            speak('Opening audit ledger logs.');
             onCommand?.('SHOW_LEDGER', '');
             return;
         }
 
-        // Fallback for unrecognized commands
-        speak("I heard you, but I don't have a command for that yet.");
+        if (text.includes('logout') || text.includes('sign out')) {
+            speak('Logging you out of the system. Drive safely.');
+            onCommand?.('LOGOUT', '');
+            return;
+        }
+
+        if (text.includes('refresh') || text.includes('update')) {
+            speak('Refreshing live data.');
+            onCommand?.('REFRESH', '');
+            return;
+        }
+
+        // Catch-all
+        speak("I heard your request, but that feature is not yet mapped to a voice command.");
     };
 
     const speak = (message: string) => {
         const utterance = new SpeechSynthesisUtterance(message);
-        utterance.rate = 1.0;
         window.speechSynthesis.speak(utterance);
     };
 
-    if (!recognition) {
-        return null; // Don't show if browser doesn't support it
-    }
+    if (!recognition) return null;
 
     return (
         <div className="fixed bottom-6 right-6 z-50">
             <div className="flex flex-col items-end space-y-3">
                 {lastTranscript && (
-                    <div className="bg-white/90 backdrop-blur-md border border-indigo-100 px-4 py-2 rounded-2xl shadow-xl max-w-xs animate-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-white/90 backdrop-blur-md border border-indigo-100 px-4 py-2 rounded-2xl shadow-xl max-w-xs transition-opacity duration-300">
                         <p className="text-sm font-medium text-indigo-600 italic">"{lastTranscript}"</p>
                     </div>
                 )}
                 
                 <button
                     onClick={isListening ? stopListening : startListening}
-                    className={`p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 flex items-center justify-center ${
-                        isListening 
-                        ? 'bg-rose-500 text-white animate-pulse shadow-rose-200' 
-                        : 'bg-indigo-600 text-white shadow-indigo-200'
-                    }`}
+                    className={`p-4 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 ${
+                        isListening ? 'bg-rose-500 animate-pulse' : 'bg-indigo-600'
+                    } text-white`}
                 >
-                    {isListening ? (
-                        <MicOff className="w-6 h-6" />
-                    ) : (
-                        <Mic className="w-6 h-6" />
-                    )}
+                    {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
                 </button>
             </div>
-            
-            {isListening && (
-                <div className="fixed inset-0 bg-indigo-900/10 backdrop-blur-[2px] pointer-events-none flex items-center justify-center z-[-1]">
-                    <div className="w-32 h-32 bg-indigo-500/20 rounded-full animate-ping" />
-                </div>
-            )}
         </div>
     );
 };
