@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, AlertTriangle, Map as MapIcon, Navigation, Camera, AlertCircle, Activity, Bell, X, Check, Loader2, Upload } from 'lucide-react';
+import { Shield, AlertTriangle, Map as MapIcon, Navigation, Camera, AlertCircle, Activity, Bell, X, Check, Loader2, Upload, TrendingUp, Clock, FileText, CheckCircle2 } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, CircleMarker } from 'react-leaflet';
+import L from 'leaflet';
 
 const OfficerTacticalView: React.FC = () => {
     const { socket } = useWebSocket();
@@ -8,6 +11,19 @@ const OfficerTacticalView: React.FC = () => {
     const [lastIncident, setLastIncident] = useState<string | null>(null);
     const [stats, setStats] = useState({ shifts: 0, violations: 0, distance: 0.0 });
     const [activeMission, setActiveMission] = useState<any>(null);
+
+    // Main Navigation State
+    const [activeTab, setActiveTab] = useState<'tactical' | 'stats' | 'routes'>('tactical');
+
+    // Stats View State
+    const [statsLoading, setStatsLoading] = useState(false);
+    const [statsPeriod, setStatsPeriod] = useState<'weekly' | 'monthly'>('weekly');
+    const [officerStats, setOfficerStats] = useState<any>(null);
+
+    // Routes View State
+    const [assignedWaypoints, setAssignedWaypoints] = useState<any[]>([]);
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [routeActive, setRouteActive] = useState(false);
 
     // 1. Notifications State
     const [unreadCount, setUnreadCount] = useState(0);
@@ -224,19 +240,46 @@ const OfficerTacticalView: React.FC = () => {
         }, 2000);
     };
 
-    return (
-        <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-[#0a0f18] text-gray-100 font-inter relative shadow-2xl overflow-hidden sm:border-x sm:border-blue-900/30">
-            {/* Tactical HUD Header */}
-            <header className="p-4 border-b border-blue-900/30 bg-[#0d1420] flex justify-between items-center relative z-20">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.4)]">
-                        <Shield className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h1 className="text-lg font-black tracking-wider uppercase">Officer Portal</h1>
-                        <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Field HQ-Active-Beta</p>
-                    </div>
-                </div>
+    // -------- DATA FETCHING --------
+    useEffect(() => {
+        if (activeTab === 'stats' && !officerStats) {
+            setStatsLoading(true);
+            setTimeout(() => {
+                setOfficerStats({
+                    efficiencyScore: 92,
+                    chartData: [
+                        { day: 'Mon', fines: 12, incidents: 3 },
+                        { day: 'Tue', fines: 19, incidents: 5 },
+                        { day: 'Wed', fines: 8, incidents: 2 },
+                        { day: 'Thu', fines: 24, incidents: 8 },
+                        { day: 'Fri', fines: 15, incidents: 4 },
+                        { day: 'Sat', fines: 32, incidents: 12 },
+                        { day: 'Sun', fines: 28, incidents: 10 }
+                    ],
+                    recentLogs: [
+                        { id: 1, time: '10:45 AM', action: 'Scanned Plate DL-14-XC23' },
+                        { id: 2, time: '09:30 AM', action: 'Reported Obstruction at Sector 4' },
+                        { id: 3, time: '08:00 AM', action: 'Started Patrol Shift' }
+                    ]
+                });
+                setStatsLoading(false);
+            }, 800);
+        }
+
+        if (activeTab === 'routes' && assignedWaypoints.length === 0) {
+            setAssignedWaypoints([
+                { id: '1', label: 'Sector 4 Market', lat: 28.5677, lng: 77.2433, completed: false },
+                { id: '2', label: 'Transit Hub Alpha', lat: 28.6001, lng: 77.2270, completed: false },
+                { id: '3', label: 'Connaught Place Central', lat: 28.6328, lng: 77.2197, completed: false }
+            ]);
+        }
+    }, [activeTab, officerStats, assignedWaypoints]);
+
+    // -------- VIEW RENDERERS --------
+    const renderTacticalView = () => (
+        <div className="flex-1 overflow-auto p-4 space-y-4">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-3">
                 <div className="flex items-center gap-4">
                     <div className="text-right">
                         <p className="text-[10px] text-gray-500 font-bold uppercase">Badge #77</p>
@@ -275,12 +318,9 @@ const OfficerTacticalView: React.FC = () => {
                 </div>
             </header>
 
-            {/* Main Operational Area */}
-            <div className="flex-1 overflow-auto p-4 space-y-4">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-3 gap-3">
-                    {[
-                        { label: 'Shift (h)', val: stats.shifts, icon: Activity, color: 'text-emerald-400' },
+                {[
+                    { label: 'Shift (h)', val: stats.shifts, icon: Activity, color: 'text-emerald-400' },
+
                         { label: 'Fines', val: stats.violations, icon: AlertCircle, color: 'text-amber-400' },
                         { label: 'KM', val: stats.distance, icon: Navigation, color: 'text-purple-400' }
                     ].map((s, i) => (
@@ -390,26 +430,268 @@ const OfficerTacticalView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Feed Overlay (Toasts) */}
-                {lastIncident && (
-                    <div className="fixed bottom-24 left-4 right-4 bg-emerald-600 text-white p-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom flex items-center justify-center gap-3 z-50">
-                        <Check className="w-5 h-5 font-bold" />
-                        <p className="text-sm font-black uppercase tracking-tight text-center">{lastIncident}</p>
-                    </div>
-                )}
+            {/* Feed Overlay (Toasts) */}
+            {lastIncident && (
+                <div className="fixed bottom-24 left-4 right-4 bg-emerald-600 text-white p-4 rounded-xl shadow-2xl animate-in slide-in-from-bottom flex items-center justify-center gap-3 z-50">
+                    <Check className="w-5 h-5 font-bold" />
+                    <p className="text-sm font-black uppercase tracking-tight text-center">{lastIncident}</p>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderStatsView = () => (
+        <div className="flex-1 overflow-auto p-4 space-y-6">
+            <div className="flex justify-between items-center bg-[#121b2b] p-2 rounded-xl border border-blue-900/20">
+                <button onClick={() => setStatsPeriod('weekly')} className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all ${statsPeriod === 'weekly' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>Weekly</button>
+                <button onClick={() => setStatsPeriod('monthly')} className={`flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all ${statsPeriod === 'monthly' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}>Monthly</button>
             </div>
 
+            {statsLoading || !officerStats ? (
+                <div className="space-y-4 animate-pulse">
+                    <div className="h-24 bg-blue-900/10 rounded-2xl"></div>
+                    <div className="h-48 bg-blue-900/10 rounded-2xl"></div>
+                    <div className="h-32 bg-blue-900/10 rounded-2xl"></div>
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-[#121b2b] p-4 rounded-2xl border border-blue-900/20 shadow-xl flex flex-col items-center justify-center gap-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center">Efficiency Score</span>
+                            <div className="w-20 h-20 rounded-full border-4 border-[#0d1420] flex items-center justify-center relative shadow-[inset_0_0_20px_rgba(37,99,235,0.2)]">
+                                <span className="absolute text-2xl font-black text-blue-400">{officerStats.efficiencyScore}%</span>
+                                <svg className="w-full h-full -rotate-90 transform">
+                                    <circle cx="36" cy="36" r="34" stroke="currentColor" strokeWidth="4" fill="none" className="text-blue-500" strokeDasharray={`${officerStats.efficiencyScore * 2.13} 213`} strokeLinecap="round" />
+                                </svg>
+                            </div>
+                        </div>
+                        <div className="bg-[#121b2b] p-4 rounded-2xl border border-blue-900/20 shadow-xl flex flex-col justify-between">
+                            <div className="space-y-1">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Rank</span>
+                                <p className="text-lg font-black text-amber-400">#4 Field Officer</p>
+                            </div>
+                            <div className="space-y-1 mt-4">
+                                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Total Fines</span>
+                                <p className="text-xl font-black text-emerald-400">145</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#121b2b] p-4 rounded-2xl border border-blue-900/20 shadow-xl">
+                        <div className="flex items-center gap-2 mb-4">
+                            <TrendingUp className="w-4 h-4 text-blue-500" />
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Performance Output</h3>
+                        </div>
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={officerStats.chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                    <XAxis dataKey="day" stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                                    <YAxis stroke="#4b5563" fontSize={10} tickLine={false} axisLine={false} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#0d1420', border: '1px solid #1e3a8a', borderRadius: '8px' }} cursor={{ fill: '#1e3a8a', opacity: 0.2 }} />
+                                    <Bar dataKey="fines" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="incidents" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="bg-[#121b2b] p-4 rounded-2xl border border-blue-900/20 shadow-xl">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Clock className="w-4 h-4 text-blue-500" />
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Recent Logs</h3>
+                        </div>
+                        <ul className="space-y-3">
+                            {officerStats.recentLogs.map((log: any) => (
+                                <li key={log.id} className="flex gap-3 items-start p-2 rounded-lg hover:bg-[#0d1420] transition-colors">
+                                    <span className="text-[10px] font-mono font-bold text-gray-500 mt-0.5 whitespace-nowrap">{log.time}</span>
+                                    <span className="text-xs font-medium text-gray-300 leading-tight">{log.action}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </>
+            )}
+        </div>
+    );
+
+    const renderRoutesView = () => (
+        <div className="flex-1 flex flex-col h-full bg-[#0d1420] relative">
+            {/* Map Container */}
+            <div className="flex-1 relative z-0">
+                <MapContainer 
+                    center={[28.6139, 77.2090]} 
+                    zoom={12} 
+                    className="w-full h-full"
+                    zoomControl={false}
+                >
+                    <TileLayer
+                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                        attribution='&copy; CARTO'
+                    />
+                    
+                    {/* Render Assigned Waypoints */}
+                    {assignedWaypoints.map((wp) => (
+                        <Marker 
+                            key={wp.id} 
+                            position={[wp.lat, wp.lng]}
+                            icon={L.divIcon({
+                                className: 'custom-wp-marker',
+                                html: `<div class="w-6 h-6 rounded-full flex items-center justify-center border-2 shadow-lg ${wp.completed ? 'bg-emerald-600 border-emerald-400' : 'bg-blue-600 border-blue-400 animate-pulse'}"><div class="w-2 h-2 bg-white rounded-full"></div></div>`,
+                                iconSize: [24, 24]
+                            })}
+                        >
+                            <Popup className="tactical-popup">
+                                <div className="p-2 border-b border-blue-900 text-xs font-bold uppercase tracking-widest text-[#0d1420]">{wp.label}</div>
+                            </Popup>
+                        </Marker>
+                    ))}
+
+                    {/* AI Predictor Heatmap (Mocked using overlapping circles) */}
+                    {showHeatmap && [
+                        { lat: 28.61, lng: 77.20, count: 50 },
+                        { lat: 28.56, lng: 77.24, count: 80 },
+                        { lat: 28.64, lng: 77.18, count: 30 }
+                    ].map((spot, i) => (
+                        <CircleMarker 
+                            key={`heat-${i}`}
+                            center={[spot.lat, spot.lng]}
+                            radius={spot.count / 2}
+                            fillColor="#ef4444"
+                            color="transparent"
+                            fillOpacity={0.4}
+                        />
+                    ))}
+                    
+                    {/* Active Route Path */}
+                    {routeActive && assignedWaypoints.length > 0 && (
+                        <Polyline 
+                            positions={[
+                                prevLocation.current ? [prevLocation.current.lat, prevLocation.current.lng] : [28.6139, 77.2090],
+                                ...assignedWaypoints.filter(wp => !wp.completed).map(wp => [wp.lat, wp.lng] as [number, number])
+                            ]}
+                            color="#3b82f6"
+                            weight={4}
+                            dashArray="8, 8"
+                            className="opacity-70 animate-pulse"
+                        />
+                    )}
+                </MapContainer>
+            </div>
+
+            {/* Float Overlay Dashboard */}
+            <div className="absolute inset-x-0 bottom-0 pointer-events-none z-10 flex flex-col justify-end p-4">
+                <div className="pointer-events-auto bg-[#121b2b]/95 backdrop-blur-md rounded-2xl border border-blue-900/50 shadow-2xl p-4 mb-4">
+                    <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-800">
+                        <div>
+                            <h3 className="font-black uppercase tracking-widest text-emerald-400">Patrol Itinerary</h3>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase">{assignedWaypoints.filter(wp => !wp.completed).length} Waypoints Remaining</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[9px] uppercase font-bold text-gray-400">AI Heatmap</span>
+                            <button 
+                                onClick={() => setShowHeatmap(!showHeatmap)}
+                                className={`w-10 h-5 rounded-full relative transition-colors ${showHeatmap ? 'bg-rose-500' : 'bg-gray-700'}`}
+                            >
+                                <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${showHeatmap ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="max-h-40 overflow-y-auto pr-2 space-y-2 scrollbar-thin">
+                        {assignedWaypoints.map(wp => (
+                            <div key={wp.id} className="flex items-center justify-between p-3 bg-[#0d1420] rounded-xl border border-gray-800/50">
+                                <span className={`text-xs font-bold uppercase tracking-widest ${wp.completed ? 'text-gray-600 line-through' : 'text-blue-200'}`}>{wp.label}</span>
+                                <button 
+                                    onClick={() => setAssignedWaypoints(wps => wps.map(w => w.id === wp.id ? { ...w, completed: !w.completed } : w))}
+                                    className={`w-6 h-6 rounded border flex items-center justify-center transition-colors ${wp.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-600 text-transparent'}`}
+                                >
+                                    <Check className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button 
+                        onClick={() => setRouteActive(!routeActive)}
+                        className={`w-full mt-4 p-4 rounded-xl flex items-center justify-center gap-2 font-black uppercase text-sm tracking-widest transition-all ${
+                            routeActive 
+                            ? 'bg-rose-900 border border-rose-500 text-rose-400' 
+                            : 'bg-blue-600 border border-blue-500 text-white shadow-xl shadow-blue-900/20 hover:bg-blue-500'
+                        }`}
+                    >
+                        {routeActive ? <><X className="w-5 h-5"/> End active route</> : <><Navigation className="w-5 h-5"/> Start Route</>}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-[#0a0f18] text-gray-100 font-inter relative shadow-2xl overflow-hidden sm:border-x sm:border-blue-900/30">
+            {/* Tactical HUD Header */}
+            <header className="p-4 border-b border-blue-900/30 bg-[#0d1420] flex justify-between items-center relative z-20">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-[0_0_15px_rgba(37,99,235,0.4)]">
+                        <Shield className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-black tracking-wider uppercase">Officer Portal</h1>
+                        <p className="text-[10px] text-blue-400 font-bold tracking-widest uppercase">Field HQ-Active-Beta</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="text-right">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase">Badge #77</p>
+                        <p className="text-xs text-emerald-400 font-black">ONLINE</p>
+                    </div>
+                    <div className="relative">
+                        <button onClick={() => { setShowNotifications(!showNotifications); setUnreadCount(0); }}>
+                            <Bell className={`w-6 h-6 transition-colors ${unreadCount > 0 ? 'text-amber-500' : 'text-gray-400'}`} />
+                        </button>
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border border-[#0d1420] animate-pulse"></span>
+                        )}
+                        
+                        {/* Dropdown Notifs */}
+                        {showNotifications && (
+                            <div className="absolute top-10 right-0 w-64 bg-[#121b2b] border border-blue-900/30 rounded-xl shadow-2xl overflow-hidden z-50">
+                                <div className="p-3 bg-[#0d1420] border-b border-blue-900/30 font-bold text-xs uppercase flex justify-between">
+                                    <span>Comms</span>
+                                    <button onClick={() => setShowNotifications(false)}><X className="w-4 h-4 text-gray-400" /></button>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto">
+                                    {notifications.length === 0 ? (
+                                        <p className="p-4 text-xs text-center text-gray-500 font-medium">No new comms</p>
+                                    ) : (
+                                        notifications.map(n => (
+                                            <div key={n.id} className="p-3 border-b border-gray-800/50 hover:bg-gray-800/20">
+                                                <p className="text-rose-400 text-[10px] uppercase font-bold">{n.title}</p>
+                                                <p className="text-xs text-gray-300">{n.msg}</p>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </header>
+
+            {activeTab === 'tactical' && renderTacticalView()}
+            {activeTab === 'stats' && renderStatsView()}
+            {activeTab === 'routes' && renderRoutesView()}
+
             {/* Tactical Nav */}
-            <nav className="p-4 pb-8 bg-[#0d1420] border-t border-blue-900/30 grid grid-cols-3 gap-2 relative z-10">
-                <button className="flex flex-col items-center gap-1 text-blue-500 font-bold">
+            <nav className="p-4 bg-[#0d1420] border-t border-blue-900/30 grid grid-cols-3 gap-2 relative z-20">
+                <button onClick={() => setActiveTab('tactical')} className={`flex flex-col items-center gap-1 font-bold transition-colors ${activeTab === 'tactical' ? 'text-blue-500' : 'text-gray-500 opacity-50 hover:opacity-100 hover:text-white'}`}>
                     <MapIcon className="w-5 h-5" />
                     <span className="text-[9px] uppercase tracking-tighter">Tactical Map</span>
                 </button>
-                <button className="flex flex-col items-center gap-1 text-gray-500 font-bold opacity-50">
+                <button onClick={() => setActiveTab('stats')} className={`flex flex-col items-center gap-1 font-bold transition-colors ${activeTab === 'stats' ? 'text-blue-500' : 'text-gray-500 opacity-50 hover:opacity-100 hover:text-white'}`}>
                     <Activity className="w-5 h-5" />
                     <span className="text-[9px] uppercase tracking-tighter">My Stats</span>
                 </button>
-                <button className="flex flex-col items-center gap-1 text-gray-500 font-bold opacity-50">
+                <button onClick={() => setActiveTab('routes')} className={`flex flex-col items-center gap-1 font-bold transition-colors ${activeTab === 'routes' ? 'text-blue-500' : 'text-gray-500 opacity-50 hover:opacity-100 hover:text-white'}`}>
                     <Navigation className="w-5 h-5" />
                     <span className="text-[9px] uppercase tracking-tighter">Routes</span>
                 </button>
