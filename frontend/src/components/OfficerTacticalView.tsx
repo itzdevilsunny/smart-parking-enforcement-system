@@ -127,8 +127,13 @@ const OfficerTacticalView: React.FC = () => {
                             <p className="text-white font-medium mb-1">Target Zone: <span className="font-black text-amber-400">{activeMission.zone_id}</span></p>
                             <p className="text-sm text-gray-300 mb-4">Vehicle: <span className="font-mono text-white">{activeMission.vehicle_number || 'Unknown'}</span></p>
                             <div className="flex gap-2">
-                                <button className="flex-1 bg-amber-500 text-black font-black uppercase text-[10px] py-3 rounded-xl">Map Route</button>
-                                <button onClick={() => setActiveMission(null)} className="flex-1 bg-slate-800 text-white font-black uppercase text-[10px] py-3 rounded-xl border border-slate-700">Clear</button>
+                                <button 
+                                    onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(activeMission.zone_id + ' Parking Zone')}`, '_blank')}
+                                    className="flex-1 bg-amber-500 text-black font-black uppercase text-[10px] py-3 rounded-xl hover:bg-amber-400"
+                                >
+                                    Map Route
+                                </button>
+                                <button onClick={() => setActiveMission(null)} className="flex-1 bg-slate-800 text-white font-black uppercase text-[10px] py-3 rounded-xl border border-slate-700 hover:bg-slate-700">Clear</button>
                             </div>
                         </div>
                     )}
