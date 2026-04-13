@@ -10,6 +10,7 @@ import ZoneWizard from './components/ZoneWizard';
 import ResponseTeam from './components/ResponseTeam';
 import Enforcement from './components/Enforcement';
 import VendorDashboard from './components/VendorDashboard';
+import VoiceAssistant from './components/VoiceAssistant';
 import { useWebSocket } from './hooks/useWebSocket';
 import { dashboardAPI } from './services/api';
 import type { DashboardKPIs, ParkingZone, Violation, User, ParkingSession } from './types';
@@ -207,11 +208,24 @@ function App() {
 
     // Handle Dispatch from Enforcement to Response Team
     const handleEnforcementDispatch = (violation: Violation) => {
-        // Switch to the response view
         handleViewChange('response');
-        // In a real implementation, we would pass this violation to the ResponseTeam component
-        // potentially via a context or a selectedViolation state.
-        // For now, simple navigation is sufficient to unblock the UI.
+    };
+
+    const handleVoiceAction = (command: string, details: string) => {
+        console.log('Voice Command Received:', command, details);
+        
+        switch (command) {
+            case 'REPORT_VIOLATION':
+                handleViewChange('violations');
+                // Auto-fill would happen here in a real scenario
+                break;
+            case 'GET_STATUS':
+                handleViewChange('dashboard');
+                break;
+            case 'SHOW_MAP':
+                handleViewChange('map');
+                break;
+        }
     };
 
     if (!isAuthenticated) {
@@ -281,6 +295,9 @@ function App() {
                         <ResponseTeam violations={violations} zones={zones} />
                     )}
                 </div>
+
+                {/* Voice Assistant Overlay */}
+                <VoiceAssistant onCommand={handleVoiceAction} />
             </main>
         </div>
     );
