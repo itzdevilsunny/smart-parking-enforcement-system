@@ -143,26 +143,36 @@ app.post('/api/voice/process', async (req, res) => {
     const { text } = req.body;
     const apiKey = process.env.VOICE_API_KEY;
 
-    if (!apiKey) {
-        return res.status(500).json({ error: 'AI Key not configured' });
+    if (!apiKey) return res.status(500).json({ error: 'AI Key not configured' });
+
+    // Step 1: Instant Fuzzy Response (Speed)
+    const lower = text.toLowerCase();
+    if (lower === 'map' || lower === 'navigation') {
+        return res.json({ command: 'SHOW_MAP', feedback: 'Opening map instantly.' });
     }
 
+    // Step 2: Advanced AI Interpretation (Accuracy)
     try {
         const openai = new OpenAI({ apiKey });
         const completion = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
             messages: [
-                { role: "system", content: "You are the brain of a Smart Parking app. The user will speak a command in English or Hindi. Map it to one of these: SHOW_MAP, GET_STATUS, SHOW_LEDGER, SHOW_CITIZEN, PROCESS_PAYMENT, SHOW_RESPONSE, SHOW_WIZARD, REPORT_VIOLATION, LOGOUT. Return ONLY JSON: { \"command\": \"STRING\", \"feedback\": \"A short confirmation message in the user's language\" }" },
+                { role: "system", content: "You are a Smart City Assistant. Map user input (English/Hindi) to: [SHOW_MAP, GET_STATUS, SHOW_LEDGER, SHOW_CITIZEN, PROCESS_PAYMENT, SHOW_RESPONSE, LOGOUT]. Output ONLY JSON: { \"command\": \"...\", \"feedback\": \"...\" }" },
                 { role: "user", content: text }
-            ],
-            response_format: { type: "json_object" }
+            ]
         });
 
-        const response = JSON.parse(completion.choices[0].message.content || '{}');
+        // Safe Parsing
+        const content = completion.choices[0].message.content || '{}';
+        const startJson = content.indexOf('{');
+        const endJson = content.lastIndexOf('}') + 1;
+        const jsonStr = content.substring(startJson, endJson);
+        const response = JSON.parse(jsonStr || '{"command":"UNKNOWN", "feedback": "I heard you but I need more details."}');
+        
         res.json(response);
-    } catch (error) {
-        console.error('AI Brain Error:', error);
-        res.status(500).json({ error: 'AI Brain error' });
+    } catch (error: any) {
+        console.error('OpenAI Error:', error.message);
+        res.status(500).json({ error: 'AI Brain failure', detail: error.message });
     }
 });
 

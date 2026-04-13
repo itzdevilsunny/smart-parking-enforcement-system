@@ -53,7 +53,11 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
     const processCommandAI = async (text: string) => {
         setIsProcessing(true);
         try {
-            const apiBase = (import.meta as any).env?.VITE_API_BASE || 'https://smart-parking-backend-1p4n.onrender.com';
+            // Smart URL detection: Localhost vs Production
+            const apiBase = window.location.hostname === 'localhost' 
+                ? 'http://localhost:5000' 
+                : 'https://smart-parking-backend-1p4n.onrender.com';
+                
             const response = await fetch(`${apiBase}/api/voice/process`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -67,16 +71,30 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
 
             if (data.feedback) speak(data.feedback);
             
-            if (data.command !== 'UNKNOWN') {
+            if (data.command && data.command !== 'UNKNOWN') {
                 onCommand?.(data.command, '');
             }
         } catch (error) {
-            console.error('AI Error:', error);
-            speak("System brain is offline. Trying basic mode.");
-            // Fallback to basic keywords if AI fails
-            if (text.includes('map')) onCommand?.('SHOW_MAP', '');
+            console.error('AI Connection Error:', error);
+            // Don't say "offline" immediately - use an Intelligent Local Backup
+            processBasicBackup(text);
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const processBasicBackup = (text: string) => {
+        const lower = text.toLowerCase();
+        if (lower.includes('map') || lower.includes('navigation') || lower.includes('rasta')) {
+            speak("Opening map.");
+            onCommand?.('SHOW_MAP', '');
+        } else if (lower.includes('revenue') || lower.includes('collection') || lower.includes('paisa')) {
+            speak(`Current collection is ${kpis?.revenue_today || 0} rupees.`);
+        } else if (lower.includes('history') || lower.includes('challan')) {
+            speak("Opening history.");
+            onCommand?.('SHOW_LEDGER', '');
+        } else {
+            speak("I heard you, but the AI brain is still syncing. Try simple words like map or revenue.");
         }
     };
 
