@@ -180,6 +180,9 @@ function App() {
         if (role === 'user') {
             setHistory(['citizen']);
             setCurrentIndex(0);
+        } else if (role === 'officer' || role === 'police') {
+            setHistory(['tactical']);
+            setCurrentIndex(0);
         } else {
             setHistory(['dashboard']);
             setCurrentIndex(0);
@@ -264,6 +267,10 @@ function App() {
     const renderContent = () => {
         if (view === 'citizen' && userRole === 'user') {
             return <CitizenApp zones={zones} user={user} history={MOCK_USER_HISTORY} />;
+        }
+
+        if (view === 'tactical' && (userRole === 'officer' || userRole === 'police')) {
+            return <OfficerTacticalView />;
         }
 
         return (
