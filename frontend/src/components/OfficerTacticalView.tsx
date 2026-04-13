@@ -33,7 +33,7 @@ const OfficerTacticalView: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-full bg-[#0a0f18] text-gray-100 font-inter">
+        <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-[#0a0f18] text-gray-100 font-inter relative shadow-2xl overflow-hidden sm:border-x sm:border-blue-900/30">
             {/* Tactical HUD Header */}
             <header className="p-4 border-b border-blue-900/30 bg-[#0d1420] flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -133,7 +133,7 @@ const OfficerTacticalView: React.FC = () => {
             </div>
 
             {/* Tactical Nav */}
-            <nav className="p-4 bg-[#0d1420] border-t border-blue-900/30 grid grid-cols-3 gap-2">
+            <nav className="p-4 pb-8 bg-[#0d1420] border-t border-blue-900/30 grid grid-cols-3 gap-2">
                 <button className="flex flex-col items-center gap-1 text-blue-500 font-bold">
                     <MapIcon className="w-5 h-5" />
                     <span className="text-[9px] uppercase tracking-tighter">Tactical Map</span>
