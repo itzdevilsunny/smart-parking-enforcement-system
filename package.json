@@ -1,8 +1,0 @@
-{
-  "name": "smart-parking-monorepo",
-  "private": true,
-  "scripts": {
-    "build": "cd frontend && npm install && npm run build",
-    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install"
-  }
-}
