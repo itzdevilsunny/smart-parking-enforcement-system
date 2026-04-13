@@ -7,7 +7,7 @@ export function useWebSocket() {
     const [connected, setConnected] = useState(false);
 
     useEffect(() => {
-        const newSocket = io('http://localhost:5000', {
+        const newSocket = io('https://smart-parking-backend-1p4n.onrender.com', {
             transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: 5,

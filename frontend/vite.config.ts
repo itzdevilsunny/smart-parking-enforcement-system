@@ -7,12 +7,13 @@ export default defineConfig({
         port: 3000,
         proxy: {
             '/api': {
-                target: 'http://localhost:5000',
+                target: 'https://smart-parking-backend-1p4n.onrender.com',
                 changeOrigin: true
             },
             '/socket.io': {
-                target: 'http://localhost:5000',
-                ws: true
+                target: 'https://smart-parking-backend-1p4n.onrender.com',
+                ws: true,
+                changeOrigin: true
             }
         }
     }

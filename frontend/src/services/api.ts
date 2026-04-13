@@ -1,6 +1,6 @@
 import type { DashboardKPIs, ParkingZone, Violation, User } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://smart-parking-backend-1p4n.onrender.com/api';
 
 // Helper for fetch requests
 async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> {

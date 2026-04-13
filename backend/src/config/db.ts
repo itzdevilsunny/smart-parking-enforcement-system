@@ -18,8 +18,8 @@ pool.on('error', (err) => {
 });
 
 export const query = async (text: string, params?: any[]) => {
-    // FORCE MOCK FALLBACK FOR PROTOTYPE (Database is likely not running)
-    const USE_MOCK = true;
+    // MOCK fallback if no Database URL is provided
+    const USE_MOCK = !process.env.DATABASE_URL;
 
     if (USE_MOCK) {
         // console.warn('Using Mock Data for:', text);
