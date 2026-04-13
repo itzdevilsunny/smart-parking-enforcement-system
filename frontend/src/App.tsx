@@ -328,6 +328,7 @@ function App() {
                 onCommand={handleVoiceAction}
                 kpis={kpis}
                 zones={zones}
+                userHistory={MOCK_USER_HISTORY}
             />
         </>
     );

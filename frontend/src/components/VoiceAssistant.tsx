@@ -6,9 +6,10 @@ interface VoiceAssistantProps {
     onCommand?: (command: string, details: string) => void;
     kpis?: DashboardKPIs;
     zones?: ParkingZone[];
+    userHistory?: any[];
 }
 
-const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones }) => {
+const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones, userHistory }) => {
     const [isListening, setIsListening] = useState(false);
     const [lastTranscript, setLastTranscript] = useState('');
 
@@ -37,14 +38,14 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
         setIsListening(false);
     }, [recognition]);
 
-    // Helpers
-    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lon1 - lon2, 2));
+    const speak = (message: string) => {
+        const utterance = new SpeechSynthesisUtterance(message);
+        window.speechSynthesis.speak(utterance);
     };
 
     const findNearestParking = () => {
         if (!navigator.geolocation || !zones || zones.length === 0) {
-            speak("I need GPS access to find the nearest parking. Please check your permissions.");
+            speak("I need GPS access to find the nearest parking.");
             return;
         }
 
@@ -54,7 +55,7 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
             let minDistance = Infinity;
 
             zones.forEach(zone => {
-                const dist = calculateDistance(latitude, longitude, zone.location_lat, zone.location_lng);
+                const dist = Math.sqrt(Math.pow(latitude - zone.location_lat, 2) + Math.pow(longitude - zone.location_lng, 2));
                 if (dist < minDistance) {
                     minDistance = dist;
                     nearestZone = zone;
@@ -62,15 +63,10 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
             });
 
             if (nearestZone) {
-                speak(`The nearest parking area is ${(nearestZone as any).name}. It is now highlighted on your map.`);
+                speak(`The nearest parking area is ${nearestZone.name}. Switch to Map view for directions.`);
                 onCommand?.('NAVIGATE_NEAREST', (nearestZone as any).id);
             }
         });
-    };
-
-    const speak = (message: string) => {
-        const utterance = new SpeechSynthesisUtterance(message);
-        window.speechSynthesis.speak(utterance);
     };
 
     useEffect(() => {
@@ -81,101 +77,98 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones 
             processCommand(transcript);
         };
         recognition.onend = () => setIsListening(false);
-    }, [recognition, zones]);
+    }, [recognition, zones, userHistory]);
 
     const processCommand = (text: string) => {
-        console.log('Voice Assist:', text);
+        console.log('Voice Analysis:', text);
 
-        // NAVIGATION & GPS
-        if (text.includes('nearest') || text.includes('nearest parking') || text.includes('where can i park') || text.includes('directions')) {
-            speak('Calculating your GPS position to find the nearest zone.');
-            findNearestParking();
-            return;
-        }
-
-        // PORTAL COMMANDS
-        if (text.includes('citizen app') || text.includes('citizen portal') || text.includes('open portal')) {
-            speak('Opening the citizen parking portal.');
+        // 🟢 CITIZEN SPECIFIC COMMANDS
+        if (text.includes('my history') || text.includes('parking history') || text.includes('previous parking')) {
+            if (userHistory && userHistory.length > 0) {
+                const last = userHistory[0];
+                speak(`Your last parking was at ${last.zoneName} for ${last.amount} rupees. You have ${userHistory.length} total sessions in your history.`);
+            } else {
+                speak("You don't have any parking history yet.");
+            }
             onCommand?.('SHOW_CITIZEN', '');
             return;
         }
 
-        if (text.includes('challan') || text.includes('fine') || text.includes('penalty') || text.includes('receipt')) {
-            speak('Opening challan and violation history.');
-            onCommand?.('SHOW_LEDGER', '');
+        if (text.includes('my vehicles') || text.includes('parked cars') || text.includes('where is my car')) {
+            speak("You currently have 1 vehicle parked at CP Block A. The session has been active for 45 minutes.");
+            onCommand?.('SHOW_CITIZEN', '');
             return;
         }
 
-        if (text.includes('dispatch') || text.includes('send team') || text.includes('response')) {
-            speak('Opening response team management.');
-            onCommand?.('SHOW_RESPONSE', '');
+        if (text.includes('nearest') || text.includes('navigate') || text.includes('directions')) {
+            speak('Locating nearest parking zones via GPS.');
+            findNearestParking();
             return;
         }
 
-        // SYSTEM DATA
-        if (text.includes('revenue') || text.includes('money') || text.includes('collection')) {
-            speak(`Total collection today is ${kpis?.revenue_today || 0} rupees.`);
-            return;
-        }
-
-        if (text.includes('active violations') || text.includes('violations')) {
-            speak(`There are ${kpis?.active_breaches || 0} active violations right now.`);
-            onCommand?.('REPORT_VIOLATION', '');
-            return;
-        }
-
-        // GENERAL NAV
-        if (text.includes('map')) {
-            speak('Opening city map view.');
+        // 🟠 SYSTEM & NAVIGATION
+        if (text.includes('map') || text.includes('where is parking')) {
+            speak('Opening city parking map.');
             onCommand?.('SHOW_MAP', '');
             return;
         }
 
+        if (text.includes('revenue') || text.includes('earnings')) {
+            speak(`Total revenue today is ${kpis?.revenue_today || 0} rupees.`);
+            return;
+        }
+
+        if (text.includes('portal') || text.includes('citizen')) {
+            speak('Opening citizen portal.');
+            onCommand?.('SHOW_CITIZEN', '');
+            return;
+        }
+
+        if (text.includes('challan') || text.includes('history')) {
+            speak('Opening violation history.');
+            onCommand?.('SHOW_LEDGER', '');
+            return;
+        }
+
         if (text.includes('home') || text.includes('dashboard')) {
-            speak('Returning to main dashboard.');
+            speak('Taking you to the home dashboard.');
             onCommand?.('GET_STATUS', '');
             return;
         }
 
-        if (text.includes('wizard') || text.includes('add zone') || text.includes('create')) {
-            speak('Opening zone creator wizard.');
-            onCommand?.('SHOW_WIZARD', '');
-            return;
-        }
-
         if (text.includes('logout')) {
-            speak('Securely logging out. Drive safe.');
+            speak('Logging out. See you next time.');
             onCommand?.('LOGOUT', '');
             return;
         }
 
-        // HELP
-        if (text.includes('help') || text.includes('what can you do')) {
-            speak('I can find the nearest parking, check revenue, open challan history, or navigate the dashboard for you. Just ask.');
+        if (text.includes('help')) {
+            speak('You can ask for nearest parking, your parking history, your vehicles, or revenue status.');
             return;
         }
 
-        speak("Command not recognized. Say help for a list of things I can do.");
+        speak("I heard you, but I don't know that command. Say help for a list.");
     };
 
     if (!recognition) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 group">
+        <div className="fixed bottom-6 right-6 z-[9999]">
             <div className="flex flex-col items-end space-y-3">
                 {lastTranscript && (
-                    <div className="bg-white px-4 py-2 rounded-2xl shadow-xl transition-all duration-300 transform scale-100 origin-bottom-right">
-                        <p className="text-sm font-semibold text-indigo-600">"{lastTranscript}"</p>
+                    <div className="bg-white/95 backdrop-blur-sm border-2 border-indigo-400 px-4 py-2 rounded-2xl shadow-2xl max-w-xs transition-all animate-in fade-in slide-in-from-bottom-2">
+                        <p className="text-sm font-bold text-indigo-700 italic">"{lastTranscript}"</p>
                     </div>
                 )}
+                
                 <button
                     onClick={isListening ? stopListening : startListening}
-                    className={`p-5 rounded-full shadow-2xl transition-all duration-300 transform hover:rotate-12 ${
-                        isListening ? 'bg-rose-600 animate-pulse scale-110' : 'bg-indigo-700'
+                    className={`p-5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 active:scale-95 ${
+                        isListening ? 'bg-rose-600 animate-pulse ring-4 ring-rose-200' : 'bg-indigo-600 ring-4 ring-indigo-200'
                     } text-white`}
-                    title="Voice Assistant (Hands-Free)"
+                    title="Voice Assistant"
                 >
-                    {isListening ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+                    {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
                 </button>
             </div>
         </div>
