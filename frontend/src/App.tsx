@@ -333,6 +333,8 @@ function App() {
                 kpis={kpis}
                 zones={zones}
                 userHistory={MOCK_USER_HISTORY}
+                userRole={userRole}
+                currentView={view}
             />
         </>
     );
