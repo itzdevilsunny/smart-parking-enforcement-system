@@ -71,32 +71,32 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
         }
 
         // History & Challan
-        if (lower.includes('parking history') || lower.includes('my history') || lower.includes('purana parking')) {
+        if (lower.includes('parking history') || lower.includes('my history') || lower.includes('purana parking') || lower.includes('beeta hua')) {
             const sessions = userHistory?.length || 0;
-            speak(`You have ${sessions} previous parking sessions. Showing your history now.`);
-            onCommand?.('SHOW_CITIZEN', '');
+            speak(`Showing your history of ${sessions} trips.`);
+            onCommand?.('SHOW_CITIZEN', ''); // Switch to History View
             return;
         }
 
         if (lower.includes('system history') || lower.includes('challan') || lower.includes('ledger') || lower.includes('records')) {
-            speak("Opening master audit ledger and challan records.");
-            onCommand?.('SHOW_LEDGER', '');
+            speak("Opening all challan and penalty records.");
+            onCommand?.('SHOW_LEDGER', ''); // Switch to Ledger View
             return;
         }
 
         // Citizen Specific
         if (lower.includes('where is my car') || lower.includes('meri gadi') || lower.includes('vehicle status')) {
-            speak("Your vehicle is currently parked in the CP Block Alpha zone.");
-            onCommand?.('SHOW_CITIZEN', '');
+            speak("Your vehicle is in Zone Alpha. Switching to your live dashboard.");
+            onCommand?.('SHOW_CITIZEN', ''); // Switch to Citizen View
             return;
         }
 
         // Payments
         if (paymentPending) {
             if (lower.includes('yes') || lower.includes('confirm') || lower.includes('haan') || lower.includes('pay')) {
-                speak("Payment successful via FastTag. Thank you!");
+                speak("Payment successful. Drive safely!");
                 setPaymentPending(false);
-                onCommand?.('PROCESS_PAYMENT', '');
+                onCommand?.('PROCESS_PAYMENT', ''); // Execute Payment
             } else {
                 speak("Payment cancelled.");
                 setPaymentPending(false);
@@ -104,9 +104,17 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
             return;
         }
 
-        if (lower.includes('pay') || lower.includes('paisa') || lower.includes('checkout')) {
-            speak("Your bill is 60 rupees. Say confirm to pay now.");
+        if (lower.includes('pay') || lower.includes('paisa') || lower.includes('checkout') || lower.includes('bhugtan')) {
+            speak("Your bill is ready. Opening payment portal.");
+            onCommand?.('SHOW_CITIZEN', ''); // Switch to Payment context
             setPaymentPending(true);
+            return;
+        }
+
+        // System Queries (Admin/Officer)
+        if (lower.includes('revenue') || lower.includes('kamayi') || lower.includes('collection')) {
+            speak(`Total collection is ${kpis?.revenue_today || 0} rupees. Showing financial summary.`);
+            onCommand?.('GET_STATUS', ''); // Switch to Dashboard View
             return;
         }
 
