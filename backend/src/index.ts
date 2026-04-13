@@ -101,6 +101,14 @@ io.on('connection', (socket) => {
             deployed_at: new Date(),
             status: 'dispatched'
         });
+        
+        // Push Dispatch Order to Tactical Officers directly
+        io.emit('dispatch_order', {
+            ...data,
+            deployed_at: new Date(),
+            status: 'active_mission',
+            message: `Deploy to ${data.zone_id || 'Unknown Zone'}`
+        });
     });
 });
 

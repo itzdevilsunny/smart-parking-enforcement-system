@@ -6,7 +6,25 @@ const OfficerTacticalView: React.FC = () => {
     const { socket } = useWebSocket();
     const [activePatrol, setActivePatrol] = useState(false);
     const [lastIncident, setLastIncident] = useState<string | null>(null);
-    const [stats, setStats] = useState({ shifts: 12, violations: 145, distance: 4.2 });
+    const [stats, setStats] = useState({ shifts: 0, violations: 0, distance: 0.0 });
+    const [activeMission, setActiveMission] = useState<any>(null);
+
+    useEffect(() => {
+        if (!socket) return;
+        
+        socket.on('dispatch_order', (msg: any) => {
+            console.log('Received Dispatch Order:', msg);
+            setActiveMission(msg);
+            
+            // Text to speech alert for hands-free officer!
+            const utterance = new SpeechSynthesisUtterance(`New dispatch order for zone ${msg.zone_id}`);
+            window.speechSynthesis.speak(utterance);
+        });
+
+        return () => {
+            socket.off('dispatch_order');
+        };
+    }, [socket]);
 
     const handleReportIncident = (type: string) => {
         const incident = {
@@ -95,6 +113,25 @@ const OfficerTacticalView: React.FC = () => {
                         </div>
                         <span className={`w-2 h-2 rounded-full ${activePatrol ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`}></span>
                     </button>
+
+                    {/* ACTIVE MISSION FLASH ALERT */}
+                    {activeMission && (
+                        <div className="bg-amber-500/20 border-2 border-amber-500 rounded-2xl p-6 shadow-[0_0_30px_rgba(245,158,11,0.3)] animate-pulse">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-2">
+                                    <AlertTriangle className="w-6 h-6 text-amber-500" />
+                                    <h3 className="font-black tracking-widest text-amber-500 uppercase">Deploy Order</h3>
+                                </div>
+                                <span className="text-[10px] text-amber-500 font-bold bg-amber-500/20 px-2 py-1 rounded">PRIORITY 1</span>
+                            </div>
+                            <p className="text-white font-medium mb-1">Target Zone: <span className="font-black text-amber-400">{activeMission.zone_id}</span></p>
+                            <p className="text-sm text-gray-300 mb-4">Vehicle: <span className="font-mono text-white">{activeMission.vehicle_number || 'Unknown'}</span></p>
+                            <div className="flex gap-2">
+                                <button className="flex-1 bg-amber-500 text-black font-black uppercase text-[10px] py-3 rounded-xl">Map Route</button>
+                                <button onClick={() => setActiveMission(null)} className="flex-1 bg-slate-800 text-white font-black uppercase text-[10px] py-3 rounded-xl border border-slate-700">Clear</button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-3">
                         <button 

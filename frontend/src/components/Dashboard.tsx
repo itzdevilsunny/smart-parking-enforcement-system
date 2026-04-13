@@ -168,8 +168,20 @@ export default function Dashboard({ kpis, zones, violations, onBack, onNext }: D
                                     <td className="py-3 font-mono text-gray-400">#{v.id.slice(0, 8)}</td>
                                     <td className="py-3 text-gray-500">2 min ago</td>
                                     <td className="py-3 text-right">
-                                        <button className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors">
-                                            DEPLOY TEAM
+                                        <button 
+                                            onClick={() => {
+                                                socket?.emit('deploy_response_team', {
+                                                    violation_id: v.id,
+                                                    zone_id: v.zone_id,
+                                                    vehicle_number: v.vehicle_number
+                                                });
+                                                // Local instant feedback placeholder
+                                                v.status = 'dispatched';
+                                            }}
+                                            className={`text-[10px] ${v.status === 'dispatched' ? 'bg-amber-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-3 py-1 rounded transition-colors`}
+                                            disabled={v.status === 'dispatched'}
+                                        >
+                                            {v.status === 'dispatched' ? 'DISPATCHED' : 'DEPLOY TEAM'}
                                         </button>
                                     </td>
                                 </tr>
