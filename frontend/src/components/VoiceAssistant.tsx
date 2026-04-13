@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Mic, MicOff, CheckCircle, CreditCard } from 'lucide-react';
+import { Mic, MicOff, CheckCircle, CreditCard, Languages } from 'lucide-react';
 import type { DashboardKPIs, ParkingZone } from '../types';
 
 interface VoiceAssistantProps {
@@ -21,11 +21,17 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
     if (recognition) {
         recognition.continuous = false;
         recognition.interimResults = false;
-        recognition.lang = 'en-US';
+        recognition.lang = 'en-US'; // Supports mixed speech usually
     }
 
     const speak = (message: string) => {
         const utterance = new SpeechSynthesisUtterance(message);
+        // Auto-detect language for voice output
+        if (/[\u0900-\u097F]/.test(message)) {
+            utterance.lang = 'hi-IN';
+        } else {
+            utterance.lang = 'en-US';
+        }
         window.speechSynthesis.speak(utterance);
     };
 
@@ -46,83 +52,68 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
     }, [recognition]);
 
     const processCommand = (text: string) => {
-        console.log('Voice Payment Logic:', text);
+        console.log('Multilingual Logic:', text);
 
-        // 💳 PAYMENT CONFIRMATION STATE
+        // 💳 PAYMENT FLOW (Hindi/English)
         if (paymentPending) {
-            if (text.includes('confirm') || text.includes('yes') || text.includes('pay')) {
-                speak("Payment received. Processing with FastTag. You are all set.");
+            if (text.includes('confirm') || text.includes('yes') || text.includes('haan') || text.includes('pay')) {
+                speak("Payment received. Done. Shukriya!");
                 setPaymentPending(false);
-                setStatusMessage("Payment Complete! ✅");
                 onCommand?.('PROCESS_PAYMENT', '');
-                setTimeout(() => setStatusMessage(null), 3000);
             } else {
-                speak("Payment cancelled. You can pay manually later.");
+                speak("Payment cancelled.");
                 setPaymentPending(false);
             }
             return;
         }
 
-        // 💰 INITIATE PAYMENT
-        if (text.includes('pay') || text.includes('checkout') || text.includes('clear dues')) {
-            const amount = 60; // Mock amount
-            speak(`Your current bill is ${amount} rupees. Say Confirm to pay now using your wallet.`);
-            setPaymentPending(true);
-            setStatusMessage("Waiting for Confirmation...");
+        // 💰 REVENUE (English/Hindi)
+        if (text.includes('revenue') || text.includes('collection') || text.includes('paisa') || text.includes('kamaya')) {
+            const rev = kpis?.revenue_today || 0;
+            speak(`Today's collection is ${rev} rupees. Aaj ki kamayi ${rev} rupaye hai.`);
             return;
         }
 
-        // 🚗 CITIZEN QUERIES
-        if (text.includes('history') || text.includes('trips')) {
-            const count = userHistory?.length || 0;
-            speak(`You have ${count} previous sessions. Your last trip was to CP Block A.`);
-            onCommand?.('SHOW_CITIZEN', '');
-            return;
-        }
-
-        if (text.includes('where is my car') || text.includes('my vehicle')) {
-            speak("Your vehicle DL-5C-4321 is currently in CP Block A. Session active for 45 minutes.");
-            onCommand?.('SHOW_CITIZEN', '');
-            return;
-        }
-
-        // 🗺️ NAVIGATION
-        if (text.includes('nearest') || text.includes('find parking') || text.includes('navigate')) {
-            speak('Searching for nearest available parking via GPS.');
-            onCommand?.('NAVIGATE_NEAREST', '');
-            return;
-        }
-
-        // 📊 SYSTEM (Admin/Officer)
-        if (text.includes('revenue') || text.includes('money')) {
-            speak(`Total revenue is ${kpis?.revenue_today || 0} rupees.`);
-            return;
-        }
-
-        if (text.includes('map') || text.includes('show map')) {
-            speak('Opening city map.');
+        // 🗺️ MAP (English/Hindi)
+        if (text.includes('map') || text.includes('dikhao') || text.includes('location')) {
+            speak('Opening Map. Map khul raha hai.');
             onCommand?.('SHOW_MAP', '');
             return;
         }
 
-        if (text.includes('dashboard') || text.includes('home')) {
-            speak('Going to main dashboard.');
-            onCommand?.('GET_STATUS', '');
+        // 🚗 HISTORY & VEHICLES (English/Hindi)
+        if (text.includes('history') || text.includes('purana') || text.includes('pehle')) {
+            speak("Opening your parking history. Aapka parking history khul raha hai.");
+            onCommand?.('SHOW_CITIZEN', '');
             return;
         }
 
-        if (text.includes('logout')) {
-            speak('Logging out. Drive safely.');
+        if (text.includes('gadi') || text.includes('car') || text.includes('vehicle')) {
+            speak("Your vehicle is parked in Zone A. Aapki gadi Zone A mein hai.");
+            onCommand?.('SHOW_CITIZEN', '');
+            return;
+        }
+
+        // ⚖️ VIOLATIONS (English/Hindi)
+        if (text.includes('violation') || text.includes('fine') || text.includes('challan') || text.includes('galti')) {
+            speak("Opening violations. Challan history khul rahi hai.");
+            onCommand?.('SHOW_LEDGER', '');
+            return;
+        }
+
+        // 🔓 LOGOUT
+        if (text.includes('logout') || text.includes('band karo')) {
+            speak("Logging out. Alvida!");
             onCommand?.('LOGOUT', '');
             return;
         }
 
-        if (text.includes('help')) {
-            speak('You can say: Pay for my parking, Show my history, Find nearest parking, or Check revenue.');
+        if (text.includes('help') || text.includes('madad')) {
+            speak("I can help with revenue, map, history, and payments. Mein revenue, map, aur payment mein madad kar sakta hoon.");
             return;
         }
 
-        speak("I heard you, but I don't have a command for that. Say help for options.");
+        speak("I didn't understand. Phirse koshish karein.");
     };
 
     useEffect(() => {
@@ -138,39 +129,36 @@ const VoiceAssistant: React.FC<VoiceAssistantProps> = ({ onCommand, kpis, zones,
     if (!recognition) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-[9999]">
-            <div className="flex flex-col items-end space-y-3">
-                {statusMessage && (
-                    <div className="bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-2xl animate-bounce flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-sm font-bold">{statusMessage}</span>
+        <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-end space-y-4">
+            {lastTranscript && (
+                <div className="bg-slate-9 border-t-4 border-indigo-500 bg-white p-4 rounded-xl shadow-2xl max-w-xs animate-in slide-in-from-right-4 duration-300">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Languages className="w-3 h-3 text-indigo-500" />
+                        <span className="text-[10px] font-black uppercase text-indigo-400 tracking-tighter">Voice Processing</span>
                     </div>
-                )}
-                
-                {lastTranscript && (
-                    <div className="bg-white/95 border-l-4 border-indigo-500 px-4 py-3 rounded-xl shadow-2xl max-w-xs transition-all">
-                        <p className="text-xs text-indigo-400 font-bold uppercase tracking-widest mb-1">Live Transcript</p>
-                        <p className="text-sm font-bold text-gray-800">"{lastTranscript}"</p>
-                    </div>
-                )}
+                    <p className="text-sm font-bold text-slate-800 leading-tight">"{lastTranscript}"</p>
+                </div>
+            )}
 
-                <button
-                    onClick={isListening ? stopListening : startListening}
-                    className={`relative p-5 rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 ${
-                        isListening ? 'bg-rose-600 animate-pulse' : 'bg-indigo-600'
-                    } text-white`}
-                    title="Voice Assistant & Payment"
-                >
+            <button
+                onClick={isListening ? stopListening : startListening}
+                className={`group flex items-center justify-center w-16 h-16 rounded-full shadow-[0_0_40px_rgba(79,70,229,0.3)] transition-all duration-500 hover:scale-110 active:scale-90 ${
+                    isListening ? 'bg-rose-600 animate-pulse' : 'bg-indigo-600'
+                } text-white`}
+            >
+                <div className="relative">
                     {isListening ? (
-                        <MicOff className="w-8 h-8" />
+                        <MicOff className="w-7 h-7" />
                     ) : (
-                        <>
-                            {paymentPending && <div className="absolute -top-2 -right-2 bg-yellow-400 text-black p-1 rounded-full animate-ping"><CreditCard className="w-4 h-4" /></div>}
-                            <Mic className="w-8 h-8" />
-                        </>
+                        <Mic className="w-7 h-7 transition-transform group-hover:rotate-12" />
                     )}
-                </button>
-            </div>
+                    {paymentPending && (
+                        <div className="absolute -top-10 -left-10 bg-yellow-400 text-black p-2 rounded-lg text-[10px] font-black shadow-xl animate-bounce">
+                            CONFIRM?
+                        </div>
+                    )}
+                </div>
+            </button>
         </div>
     );
 };
