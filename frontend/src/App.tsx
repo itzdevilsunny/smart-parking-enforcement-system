@@ -11,6 +11,7 @@ import ResponseTeam from './components/ResponseTeam';
 import Enforcement from './components/Enforcement';
 import VendorDashboard from './components/VendorDashboard';
 import VoiceAssistant from './components/VoiceAssistant';
+import OfficerTacticalView from './components/OfficerTacticalView';
 import { useWebSocket } from './hooks/useWebSocket';
 import { dashboardAPI } from './services/api';
 import type { DashboardKPIs, ParkingZone, Violation, User, ParkingSession } from './types';
@@ -232,7 +233,8 @@ function App() {
                 handleViewChange('citizen');
                 break;
             case 'SHOW_RESPONSE':
-                handleViewChange('response');
+            case 'SHOW_ENFORCEMENT':
+                handleViewChange('tactical');
                 break;
             case 'SHOW_WIZARD':
                 handleViewChange('wizard');
@@ -319,6 +321,7 @@ function App() {
                         {view === 'response' && (
                             <ResponseTeam violations={violations} zones={zones} />
                         )}
+                        {view === 'tactical' && <OfficerTacticalView />}
                     </div>
                 </main>
             </div>

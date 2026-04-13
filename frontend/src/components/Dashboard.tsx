@@ -12,7 +12,20 @@ interface DashboardProps {
     onNext?: () => void;
 }
 
+import { useState, useEffect } from 'react';
+import { useWebSocket } from '../hooks/useWebSocket';
+
 export default function Dashboard({ kpis, zones, violations, onBack, onNext }: DashboardProps) {
+    const { socket } = useWebSocket();
+    const [incidents, setIncidents] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (!socket) return;
+        socket.on('new_incident', (data: any) => {
+            setIncidents(prev => [data, ...prev].slice(0, 10));
+        });
+        return () => { socket.off('new_incident'); };
+    }, [socket]);
     const stats = [
         { label: 'Efficiency', value: `${kpis.efficiency || 92}%`, change: '+4.2%', icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
         { label: 'Active Flow', value: kpis.total_vehicles, change: '+124', icon: Car, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -81,36 +94,47 @@ export default function Dashboard({ kpis, zones, violations, onBack, onNext }: D
                 </div>
 
                 {/* Live Zones Panel */}
-                <div className="col-span-12 lg:col-span-4 bg-tactical-card border border-tactical-border rounded-xl p-6 overflow-hidden flex flex-col">
-                    <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                        <MapIcon size={20} className="text-emerald-500" />
-                        Live Zones
-                    </h3>
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
-                        {zones.map(zone => (
-                            <div key={zone.id} className="bg-slate-900/50 p-3 rounded-lg border border-tactical-border">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-sm text-white truncate max-w-[180px]">{zone.name}</span>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${(zone.current_count || 0) > zone.max_capacity
-                                        ? 'bg-red-500/20 text-red-500 border border-red-500/30'
-                                        : 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
-                                        }`}>
-                                        {((zone.current_count || 0) / zone.max_capacity * 100).toFixed(0)}% LOAD
-                                    </span>
+                <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                    {/* Incidents Feed */}
+                    <div className="bg-tactical-card border border-tactical-border rounded-xl p-6 flex-1">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <AlertTriangle size={20} className="text-rose-500 animate-pulse" />
+                            Tactical Flares
+                        </h3>
+                        <div className="space-y-3">
+                            {incidents.length === 0 && <p className="text-xs text-gray-600 italic">No active tactical flares...</p>}
+                            {incidents.map((inc, i) => (
+                                <div key={i} className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg animate-in fade-in slide-in-from-right">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-[10px] font-black text-rose-500 uppercase">{inc.type}</span>
+                                        <span className="text-[9px] text-gray-500 font-mono">{new Date(inc.server_time).toLocaleTimeString()}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 font-medium">Field Alert from Officer #77</p>
                                 </div>
-                                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-500 ${(zone.current_count || 0) > zone.max_capacity ? 'bg-red-500' : 'bg-blue-500'
-                                            }`}
-                                        style={{ width: `${Math.min(((zone.current_count || 0) / zone.max_capacity * 100), 100)}%` }}
-                                    />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Original Live Zones */}
+                    <div className="bg-tactical-card border border-tactical-border rounded-xl p-6 overflow-hidden flex flex-col h-64">
+                        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <MapIcon size={20} className="text-emerald-500" />
+                            Live Zones
+                        </h3>
+                        {/* ... zonelist ... */}
+                        <div className="flex-1 overflow-y-auto space-y-3 scrollbar-none">
+                            {zones.map(zone => (
+                                <div key={zone.id} className="bg-slate-900/50 p-3 rounded-lg border border-tactical-border">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-xs font-medium text-white truncate">{zone.name}</span>
+                                        <span className="text-[9px] text-gray-500">{zone.current_count}/{zone.max_capacity}</span>
+                                    </div>
+                                    <div className="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                                        <div className="bg-blue-500 h-full" style={{ width: `${(zone.current_count/zone.max_capacity)*100}%` }}></div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between mt-1 text-[10px] text-gray-500 font-mono">
-                                    <span>{zone.current_count} / {zone.max_capacity}</span>
-                                    <span>{zone.reserved_slots} RES</span>
-                                </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

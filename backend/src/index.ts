@@ -75,6 +75,16 @@ app.patch('/api/deployments/:id', (req, res) => {
 io.on('connection', (socket) => {
     console.log('New client connected:', socket.id);
 
+    // Officer Incident Broadcasting
+    socket.on('report_incident', (incident) => {
+        console.log('🚨 TACTICAL ALERT:', incident.type);
+        // Broadcast to all admins instantly
+        io.emit('new_incident', {
+            ...incident,
+            server_time: new Date().toISOString()
+        });
+    });
+
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
